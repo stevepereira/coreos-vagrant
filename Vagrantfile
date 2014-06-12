@@ -26,7 +26,7 @@ end
 
 Vagrant.configure("2") do |config|
   config.vm.box = "coreos-%s" % $update_channel
-  config.vm.box_version = ">= 308.0.1"
+  config.vm.box_version = ">= 343.0.0"
   config.vm.box_url = "http://%s.release.core-os.net/amd64-usr/current/coreos_production_vagrant.json" % $update_channel
 
   config.vm.provider :vmware_fusion do |vb, override|
@@ -44,6 +44,9 @@ Vagrant.configure("2") do |config|
   if Vagrant.has_plugin?("vagrant-vbguest") then
     config.vbguest.auto_update = false
   end
+
+  # SSH Set up.
+  config.ssh.forward_agent = true
 
   (1..$num_instances).each do |i|
     config.vm.define vm_name = "core-%02d" % i do |config|
@@ -70,8 +73,10 @@ Vagrant.configure("2") do |config|
       end
 
       if $expose_docker_tcp
-        config.vm.network "forwarded_port", guest: 4243, host: ($expose_docker_tcp + i - 1), auto_correct: true
+        config.vm.network "forwarded_port", guest: 2375, host: ($expose_docker_tcp + i - 1), auto_correct: true
       end
+
+      config.vm.network "forwarded_port", guest: 80, host: 8080, auto_correct: true
 
       config.vm.provider :vmware_fusion do |vb|
         vb.gui = $vb_gui
@@ -87,7 +92,7 @@ Vagrant.configure("2") do |config|
       config.vm.network :private_network, ip: ip
 
       # Uncomment below to enable NFS for sharing the host machine into the coreos-vagrant VM.
-      #config.vm.synced_folder ".", "/home/core/share", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp']
+      config.vm.synced_folder ".", "/data", id: "core", :nfs => true, :mount_options => ['nolock,vers=3,udp']
 
       if File.exist?(CLOUD_CONFIG_PATH)
         config.vm.provision :file, :source => "#{CLOUD_CONFIG_PATH}", :destination => "/tmp/vagrantfile-user-data"
